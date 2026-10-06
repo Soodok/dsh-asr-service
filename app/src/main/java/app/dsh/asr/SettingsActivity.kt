@@ -202,7 +202,7 @@ class SettingsActivity : Activity() {
             append(
                 getString(
                     R.string.settings_source_line,
-                    prefs.modelSource(Locale.getDefault().toLanguageTag()).base,
+                    prefs.modelSource(LocaleHelper.langTag(this@SettingsActivity)).base,
                 ),
             )
         }

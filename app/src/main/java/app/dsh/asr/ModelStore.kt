@@ -26,9 +26,13 @@ class ModelStore(context: Context) {
     /**
      * 当前生效的下载源（v0.5.0）。
      * 按界面语言推断（中文→hf-mirror，其它→HuggingFace 官方），设置页可手动覆盖。
+     *
+     * ⚠️ 语言必须从 `resources.configuration` 读，**不能用 `Locale.getDefault()`**：
+     * 后者是 JVM 缓存的静态值，Android 在系统语言变更（或应用内切换语言）后
+     * 不会刷新它 —— 实测把系统切到中文后仍解析成官方源。
      */
     private fun source(): ModelCatalog.Source =
-        Prefs(appCtx).modelSource(java.util.Locale.getDefault().toLanguageTag())
+        Prefs(appCtx).modelSource(LocaleHelper.langTag(appCtx))
 
     val root: File = run {
         val base = appCtx.getExternalFilesDir(null) ?: appCtx.filesDir
