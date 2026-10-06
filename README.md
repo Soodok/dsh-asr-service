@@ -19,7 +19,7 @@ other apps can use it through the standard API with **zero code changes**.
 ## Features
 
 - **System-level `RecognitionService`** — selectable as the device's recognizer
-- **Multiple models**, all downloadable from a China-friendly mirror (`hf-mirror.com`)
+- **Multiple models**, download source follows the system language: HuggingFace official for non-Chinese, `hf-mirror.com` for Chinese (overridable in Settings)
 - **Streaming and offline** decoding paths
 - **Bilingual** (Chinese + English), plus multilingual models
 - **Built-in self-check** — verifies service registration, model loading and the full
@@ -31,8 +31,9 @@ other apps can use it through the standard API with **zero code changes**.
 
 ## Models
 
-All models come from [`hf-mirror.com`](https://hf-mirror.com) (a mirror of Hugging Face,
-reachable from mainland China). Sizes are the actual file sizes.
+Models are hosted on Hugging Face; the app picks the source by system language
+(HuggingFace official for non-Chinese, the China-friendly `hf-mirror.com` mirror for
+Chinese; overridable in Settings). Sizes are the actual file sizes.
 
 | Model | Languages | Size | Streaming | Notes |
 |---|---|---|---|---|
@@ -49,7 +50,7 @@ Models are provided by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apa
 
 - Android 8.0 (API 26) or newer
 - arm64-v8a device
-- ~50 MB for the app, plus disk space for whichever models you download
+- ~31 MB for the app, plus disk space for whichever models you download
 
 ## Install
 
@@ -159,7 +160,7 @@ Android 的语音识别依赖设备上已安装的识别服务。很多手机（
 
 - Android 8.0（API 26）及以上
 - arm64-v8a 设备
-- 应用约 50 MB，另需空间下载所选模型
+- 应用约 31 MB，另需空间下载所选模型
 
 ## 安装使用
 
