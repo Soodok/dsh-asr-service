@@ -28,3 +28,6 @@ Thumbs.db
 *.keystore
 *.jks
 keystore/
+
+# Project handoff notes (local only)
+AI_CONTEXT.md
