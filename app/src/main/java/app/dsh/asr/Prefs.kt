@@ -37,6 +37,29 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_NO_SPEECH, 8000)
         set(value) = sp.edit().putInt(K_NO_SPEECH, value).apply()
 
+    /**
+     * 模型下载源（v0.5.0）。
+     *
+     * 主人要求「英文环境下切换到国外源下载」：国内镜像对境外用户慢甚至不可达，
+     * HuggingFace 官方源则相反。默认值**按界面语言推断**（中文→镜像，其它→官方），
+     * 用户可在设置页手动覆盖 —— 覆盖后以用户选择为准，不再跟随语言。
+     *
+     * 空字符串 = 未手动设置 → 跟随语言。
+     */
+    var modelSourceOverride: String
+        get() = sp.getString(K_SOURCE, "") ?: ""
+        set(value) = sp.edit().putString(K_SOURCE, value).apply()
+
+    /**
+     * 解析出**当前生效**的下载源。
+     * @param langTag 当前界面语言标签（如 `zh-CN` / `en-US`）
+     */
+    fun modelSource(langTag: String?): ModelCatalog.Source {
+        val override = modelSourceOverride
+        return if (override.isBlank()) ModelCatalog.defaultSource(langTag)
+        else ModelCatalog.sourceFrom(override)
+    }
+
     /** 当前默认模型（目录对象） */
     fun defaultModel(): AsrModel? =
         ModelCatalog.byId(defaultModelId) ?: ModelCatalog.MODELS.firstOrNull { it.recommended }
@@ -48,5 +71,6 @@ class Prefs(context: Context) {
         private const val K_SILENCE = "silence_ms"
         private const val K_MAX_UTTER = "max_utterance_ms"
         private const val K_NO_SPEECH = "no_speech_timeout_ms"
+        private const val K_SOURCE = "model_source"
     }
 }

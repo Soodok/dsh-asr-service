@@ -36,8 +36,45 @@ object ModelCatalog {
     /** 国内可直连的镜像（hf-mirror.com）。下载 URL 形如 <base>/<repo>/resolve/main/<file> */
     const val MIRROR = "https://hf-mirror.com"
 
-    fun url(model: AsrModel, file: ModelFile): String =
-        "$MIRROR/${model.repo}/resolve/main/${file.name}"
+    /** HuggingFace 官方源（境外网络环境下更快） */
+    const val OFFICIAL = "https://huggingface.co"
+
+    /**
+     * 下载源（v0.5.0）。
+     *
+     * 主人要求「英文环境下切换到国外源下载」——
+     * 国内镜像对境外用户反而慢/不可达，官方源则相反。
+     * 所以**按界面语言自动选**，同时允许用户在设置里手动覆盖。
+     */
+    enum class Source(val base: String) {
+        /** 国内镜像 hf-mirror.com */
+        MIRROR(ModelCatalog.MIRROR),
+
+        /** HuggingFace 官方 */
+        OFFICIAL(ModelCatalog.OFFICIAL),
+    }
+
+    /**
+     * 按语言代码决定默认源：中文 → 国内镜像，其它 → 官方。
+     *
+     * 判据用语言标签前缀（`zh`），与界面语言切换保持一致：
+     * 用户把应用语言设成中文，多半在国内网络；设成英文，多半在境外。
+     */
+    fun defaultSource(langTag: String?): Source {
+        val t = langTag?.lowercase().orEmpty()
+        return if (t.startsWith("zh")) Source.MIRROR else Source.OFFICIAL
+    }
+
+    /** 解析源基址：空/非法值回退到官方（英文默认），保证永远有可用 URL */
+    fun sourceFrom(name: String?): Source =
+        Source.entries.firstOrNull { it.name == name } ?: Source.OFFICIAL
+
+    /**
+     * 构造下载 URL。
+     * @param source 下载源（由 Prefs 提供，见 `Prefs.modelSource`）
+     */
+    fun url(model: AsrModel, file: ModelFile, source: Source = Source.MIRROR): String =
+        "${source.base}/${model.repo}/resolve/main/${file.name}"
 
     val MODELS: List<AsrModel> = listOf(
         AsrModel(

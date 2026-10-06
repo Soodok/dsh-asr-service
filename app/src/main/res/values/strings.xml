@@ -52,7 +52,7 @@
 若系统设置里找不到本应用，可在调用方 App 内直接指定本识别服务。</string>
 
     <string name="models_title">模型管理</string>
-    <string name="models_subtitle">全部来自 hf-mirror.com（国内镜像），下载后按字节数校验</string>
+    <string name="models_subtitle">来自 HuggingFace（中文用国内镜像、其它语言用官方源），下载后按字节数校验</string>
     <string name="models_dir">存储目录：%1$s</string>
     <string name="btn_download">下载</string>
     <string name="btn_cancel">取消</string>
@@ -76,6 +76,12 @@
     <string name="lang_auto">自动（跟随调用方）</string>
     <string name="lang_zh">中文</string>
     <string name="lang_en">英文</string>
+    <!-- 模型下载源（v0.5.0）：默认跟随界面语言，可手动覆盖 -->
+    <string name="settings_source">模型下载源</string>
+    <string name="settings_source_hint">默认跟随界面语言：中文用国内镜像，其它语言用 HuggingFace 官方源。</string>
+    <string name="source_auto">自动（跟随界面语言）</string>
+    <string name="source_mirror">国内镜像 hf-mirror.com</string>
+    <string name="source_official">HuggingFace 官方 huggingface.co</string>
     <string name="settings_streaming">优先使用流式模型</string>
     <string name="settings_streaming_hint">流式模型边说边出字；关闭则优先非流式（整句更准）</string>
     <string name="settings_silence">静音判定：%1$s s</string>
@@ -88,5 +94,6 @@
     <string name="settings_default_model_line">默认模型：%1$s</string>
     <string name="settings_models_ready">已就绪模型：%1$s</string>
     <string name="settings_models_used">已占用空间：%1$s</string>
+    <string name="settings_source_line">下载源：%1$s</string>
     <string name="btn_open_models">去下载模型</string>
 </resources>

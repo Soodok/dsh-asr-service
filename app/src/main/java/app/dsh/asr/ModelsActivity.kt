@@ -142,7 +142,10 @@ class ModelsActivity : Activity(), DownloadBus.Listener {
                     bar.progress = pct
                 }
                 running -> {
-                    tvState.text = "下载中…（正在连接 hf-mirror.com）"
+                    // 显示**实际使用的源**（v0.5.0：中文镜像 / 其它语言官方源）
+                    val src = Prefs(this@ModelsActivity)
+                        .modelSource(java.util.Locale.getDefault().toLanguageTag())
+                    tvState.text = "下载中…（正在连接 ${src.base.substringAfter("://")}）"
                     tvState.setTextColor(Ui.ACCENT)
                     bar.visibility = View.VISIBLE
                     bar.isIndeterminate = true

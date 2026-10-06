@@ -28,6 +28,7 @@ class SettingsActivity : Activity() {
 
         buildModelList()
         buildLanguage()
+        buildSource()
         buildStreamingAndEndpoints()
         buildServiceInfo()
 
@@ -93,6 +94,32 @@ class SettingsActivity : Activity() {
                 R.id.rbZh -> "zh"
                 R.id.rbEn -> "en"
                 else -> "auto"
+            }
+            buildServiceInfo()
+        }
+    }
+
+    // ------------------------------------------------------------------ 下载源
+
+    /**
+     * 模型下载源（v0.5.0）。
+     *
+     * 默认「自动」= 跟随界面语言（中文→国内镜像，其它→HuggingFace 官方），
+     * 主人要求「英文环境下切换到国外源下载」即由此实现；
+     * 也可手动锁定某一源，覆盖语言推断。
+     */
+    private fun buildSource() {
+        val rg = findViewById<RadioGroup>(R.id.rgSource)
+        when (prefs.modelSourceOverride) {
+            ModelCatalog.Source.MIRROR.name -> rg.check(R.id.rbSourceMirror)
+            ModelCatalog.Source.OFFICIAL.name -> rg.check(R.id.rbSourceOfficial)
+            else -> rg.check(R.id.rbSourceAuto)
+        }
+        rg.setOnCheckedChangeListener { _, checkedId ->
+            prefs.modelSourceOverride = when (checkedId) {
+                R.id.rbSourceMirror -> ModelCatalog.Source.MIRROR.name
+                R.id.rbSourceOfficial -> ModelCatalog.Source.OFFICIAL.name
+                else -> ""   // 空 = 自动（跟随语言）
             }
             buildServiceInfo()
         }
@@ -171,6 +198,13 @@ class SettingsActivity : Activity() {
             )
             append('\n')
             append(getString(R.string.settings_models_used, ModelCatalog.human(used)))
+            append('\n')
+            append(
+                getString(
+                    R.string.settings_source_line,
+                    prefs.modelSource(Locale.getDefault().toLanguageTag()).base,
+                ),
+            )
         }
     }
 

@@ -99,6 +99,61 @@
             </RadioGroup>
         </LinearLayout>
 
+        <!-- 模型下载源（v0.5.0）：默认跟随界面语言，可手动覆盖 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_source"
+                android:textColor="@color/accent"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/settings_source_hint"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+
+            <RadioGroup
+                android:id="@+id/rgSource"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical">
+                <RadioButton
+                    android:id="@+id/rbSourceAuto"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/source_auto"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+                <RadioButton
+                    android:id="@+id/rbSourceMirror"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/source_mirror"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+                <RadioButton
+                    android:id="@+id/rbSourceOfficial"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/source_official"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
+            </RadioGroup>
+        </LinearLayout>
+
         <!-- 流式偏好 + 端点参数 -->
         <LinearLayout
             android:layout_width="match_parent"

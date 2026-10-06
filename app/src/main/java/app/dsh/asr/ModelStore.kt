@@ -23,6 +23,13 @@ class ModelStore(context: Context) {
 
     private val appCtx = context.applicationContext
 
+    /**
+     * 当前生效的下载源（v0.5.0）。
+     * 按界面语言推断（中文→hf-mirror，其它→HuggingFace 官方），设置页可手动覆盖。
+     */
+    private fun source(): ModelCatalog.Source =
+        Prefs(appCtx).modelSource(java.util.Locale.getDefault().toLanguageTag())
+
     val root: File = run {
         val base = appCtx.getExternalFilesDir(null) ?: appCtx.filesDir
         File(base, "models").also { it.mkdirs() }
@@ -126,7 +133,7 @@ class ModelStore(context: Context) {
 
             var conn: HttpURLConnection? = null
             try {
-                val url = URL(ModelCatalog.url(model, file))
+                val url = URL(ModelCatalog.url(model, file, source()))
                 conn = (url.openConnection() as HttpURLConnection).apply {
                     connectTimeout = 20_000
                     readTimeout = 30_000
