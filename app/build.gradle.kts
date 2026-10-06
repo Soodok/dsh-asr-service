@@ -15,11 +15,22 @@ android {
         minSdk = 26
         // targetSdk 28 —— 与 dsh-android 保持一致（sideload 分发策略）
         targetSdk = 28
-        versionCode = 9
-        versionName = "0.4.1"
+        versionCode = 10
+        versionName = "0.5.0"
 
         ndk {
             abiFilters += listOf(targetAbi)
+        }
+    }
+
+    // release 签名（v0.5.0）：与 DSH Mobile 同一 keystore，方便用户覆盖安装。
+    // 凭据可用 -PksPass= / -PkeyPass= 覆盖，默认值即仓库内 keystore 的口令。
+    signingConfigs {
+        create("release") {
+            storeFile = file("../../dsh-android/keystore/dsh-release.keystore")
+            storePassword = (project.findProperty("ksPass") as String?) ?: "dshmobile2026"
+            keyAlias = "dsh"
+            keyPassword = (project.findProperty("keyPass") as String?) ?: "dshmobile2026"
         }
     }
 
@@ -27,6 +38,7 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
