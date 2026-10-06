@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">离线语音识别</string>
+    <string name="service_label">离线语音识别</string>
+
+    <string name="channel_listening">识别中</string>
+    <string name="channel_listening_desc">正在使用麦克风进行离线识别</string>
+    <string name="channel_model">模型提醒</string>
+    <string name="notif_listening_title">正在离线识别</string>
+    <string name="notif_listening_text">引擎：%1$s（音频不出本机）</string>
+    <string name="notif_nomodel_title">离线识别模型未就绪</string>
+    <string name="notif_nomodel_text">点击进入模型管理，下载任一模型即可使用</string>
+
+    <string name="main_title">离线语音识别</string>
+    <string name="main_subtitle">为系统提供本地识别能力 · 录音不出本机</string>
+        <string name="card_models">识别模型</string>
+    <string name="card_models_sub">下载或管理离线模型</string>
+    <string name="card_usage">使用说明</string>
+    <string name="card_settings">识别设置</string>
+    <string name="card_settings_sub">语言、流式识别、默认模型</string>
+    <string name="card_check">可用性检测</string>
+            <string name="set_via_shizuku">正在通过 Shizuku 设置…</string>
+    <string name="set_requesting_shizuku">正在申请 Shizuku 权限…</string>
+    <string name="set_shizuku_denied">Shizuku 权限被拒绝，改用其它方式…</string>
+    <string name="set_shizuku_failed">Shizuku 设置失败，可改用「调用方指定服务」</string>
+    <string name="set_no_shizuku">未检测到 Shizuku，尝试其它方式…</string>
+    <string name="set_all_failed">无法自动设置（系统限制）。请在调用方 App 内直接指定本服务，或安装 Shizuku 后重试。</string>
+<string name="row_check_sub">验证服务、模型、链路是否正常</string>
+    <string name="row_default_sub">让其它应用自动使用本服务</string>
+    <string name="row_settings_sub">到系统里手动选择识别服务</string>
+<string name="check_hint">点一下就能确认是否可用；有问题会告诉你怎么修。</string>
+    <string name="btn_run_check">开始检测</string>
+    <string name="btn_set_default">设为系统默认</string>
+    <string name="btn_open_settings">打开系统设置</string>
+    <string name="check_running">正在检测…</string>
+    <string name="check_set_ok">已设为系统默认识别服务 ✓</string>
+    <string name="check_set_fail">无法自动设置（系统限制）。请到系统设置里手动选择，或在调用方 App 内指定本服务。</string>
+    <string name="check_open_fail">没找到系统设置入口。可手动前往：系统设置 → 语言和输入法 → 语音输入</string>
+<string name="card_status">状态</string>
+    <string name="card_actions">操作</string>
+    <string name="card_selftest">自检</string>
+    <string name="btn_system_settings">打开系统「语音输入」设置</string>
+    <string name="btn_models">模型管理</string>
+    <string name="btn_settings">识别设置</string>
+    <string name="btn_service_test">服务自检（走 SpeechRecognizer 绑定）</string>
+    <string name="btn_wav_test">引擎自检（读取 asr_test.wav 解码）</string>
+    <string name="main_footer">用法：
+1. 先到「模型」下载一个模型
+2. 打开系统设置 → 语言和输入法 → 语音输入，选择本应用
+3. 其它 App 通过标准语音识别接口即可调用
+
+若系统设置里找不到本应用，可在调用方 App 内直接指定本识别服务。</string>
+
+    <string name="models_title">模型管理</string>
+    <string name="models_subtitle">全部来自 hf-mirror.com（国内镜像），下载后按字节数校验</string>
+    <string name="models_dir">存储目录：%1$s</string>
+    <string name="btn_download">下载</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_delete">删除</string>
+    <string name="btn_use">设为默认</string>
+    <string name="state_ready">已就绪</string>
+    <string name="state_partial">未完成</string>
+    <string name="state_missing">未下载</string>
+    <string name="label_default">默认</string>
+    <string name="label_streaming">流式</string>
+    <string name="label_offline">离线整句</string>
+    <string name="toast_download_done">%1$s 下载完成并通过校验</string>
+    <string name="toast_download_failed">下载失败：%1$s</string>
+    <string name="toast_deleted">已删除 %1$s</string>
+    <string name="toast_no_permission">需要存储权限才能删除？不需要——请重试</string>
+
+    <string name="settings_title">识别设置</string>
+    <string name="settings_default_model">默认模型</string>
+    <string name="settings_default_model_hint">未下载的模型会灰色显示，先到「模型管理」下载</string>
+    <string name="settings_language">识别语言</string>
+    <string name="lang_auto">自动（跟随调用方）</string>
+    <string name="lang_zh">中文</string>
+    <string name="lang_en">英文</string>
+    <string name="settings_streaming">优先使用流式模型</string>
+    <string name="settings_streaming_hint">流式模型边说边出字；关闭则优先非流式（整句更准）</string>
+    <string name="settings_silence">静音判定：%1$s s</string>
+    <string name="settings_silence_hint">说完后静音超过该时长即认为一句结束</string>
+    <string name="settings_maxlen">单句最长：%1$s s</string>
+    <string name="settings_nospeech">无人说话超时：%1$s s</string>
+    <string name="settings_service_info">服务信息</string>
+    <string name="settings_engine">推理引擎：sherpa-onnx 1.13.8（本地）</string>
+    <string name="settings_component">服务组件：%1$s</string>
+    <string name="settings_default_model_line">默认模型：%1$s</string>
+    <string name="settings_models_ready">已就绪模型：%1$s</string>
+    <string name="settings_models_used">已占用空间：%1$s</string>
+    <string name="btn_open_models">去下载模型</string>
+</resources>

@@ -1,0 +1,30 @@
+# Build outputs
+build/
+app/build/
+.gradle/
+.kotlin/
+local.properties
+
+# APKs (build artifacts, never commit)
+*.apk
+*.aab
+*.idsig
+
+# sherpa-onnx AAR: ~50MB, downloadable from
+# https://github.com/k2-fsa/sherpa-onnx/releases
+# See README "Build" section.
+app/libs/*.aar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keystores (never commit signing material)
+*.keystore
+*.jks
+keystore/

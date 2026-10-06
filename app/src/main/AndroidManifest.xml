@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  离线语音识别服务（系统级）。
+
+  ## 注册方式照抄成熟开源项目
+  参考 `ElishaAz/Sayboard`（Vosk 语音键盘，活跃项目）的 AndroidManifest：
+  它的 RecognitionService 声明有四个关键点，本文件全部对齐：
+    ① android:exported="true"                     —— 系统要能绑定
+    ② <category android:name="android.intent.category.DEFAULT" />  —— isDefault 标记
+    ③ android:foregroundServiceType="microphone"  —— 录音型前台服务
+    ④ android:permission="android.permission.RECORD_AUDIO"  —— 限定调用方需录音权限
+  另加 QUERY_ALL_PACKAGES：Sayboard 注释明确说明，缺它时**调用方**会收到
+  ERROR_INSUFFICIENT_PERMISSIONS（即便调用方自己有录音权限）。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 录音型前台服务（识别期间显示状态，避免被系统回收） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 参考 Sayboard：识别服务的调用方若无法被查询到，会拿到 ERROR_INSUFFICIENT_PERMISSIONS
+         （即使调用方自己有麦克风权限）。声明此项以确保跨应用调用正常。 -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <!-- 主界面：**桌面显示图标**（v0.2.1，主人要求加回），
+             同时也支持外部 App 用自定义 action 直接拉起。
+             两个 intent-filter 互不干扰：
+               · MAIN/LAUNCHER  → 桌面图标
+               · app.dsh.asr.OPEN → 外部 App（如 DSH Mobile）直接打开 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="app.dsh.asr.OPEN" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ModelsActivity"
+            android:exported="false"
+            android:label="@string/models_title" />
+
+        <!-- 系统「语音输入 → 识别服务 → 设置」入口（recognition_service.xml 引用） -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            android:label="@string/settings_title" />
+
+        <!-- 系统识别服务。声明要点见文件顶部注释（对齐 Sayboard）。 -->
+        <service
+            android:name=".AsrRecognitionService"
+            android:exported="true"
+            android:label="@string/service_label"
+            android:foregroundServiceType="microphone"
+            android:permission="android.permission.RECORD_AUDIO">
+            <intent-filter android:priority="100">
+                <action android:name="android.speech.RecognitionService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/recognition_service" />
+        </service>
+
+    </application>
+</manifest>

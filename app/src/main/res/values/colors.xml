@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 DSH Mobile 暗色规范一致 -->
+    <color name="bg">#FF101418</color>
+    <color name="card">#FF171C22</color>
+    <color name="card_pressed">#FF1F252C</color>
+    <color name="stroke">#FF262D35</color>
+    <color name="accent">#FF7DD3FC</color>
+    <color name="accent_dim">#337DD3FC</color>
+    <color name="text_primary">#FFE6EDF3</color>
+    <color name="text_secondary">#FF8A94A3</color>
+    <color name="ok">#FF7EE787</color>
+    <color name="warn">#FFF2CC60</color>
+    <color name="err">#FFFF7B72</color>
+</resources>
