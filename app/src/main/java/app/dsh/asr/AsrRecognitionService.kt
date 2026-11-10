@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionService
@@ -32,6 +33,41 @@ class AsrRecognitionService : RecognitionService() {
         super.onCreate()
         ensureChannel()
         Log.i(TAG, "service created")
+        // ★ 服务一创建就进前台并常驻（v0.5.3）。
+        //
+        // 背景：Android 11+ 把 RECORD_AUDIO 归入 while-in-use 权限，只有本进程处于
+        // 「有麦克风权利的前台服务态」才允许录音。原实现在 onStartListening 里
+        // startForeground、识别结束 stopForeground，于是每轮都重新走一次
+        // 「从后台启动前台服务」判定，日志现场是：
+        //   Background started FGS: Allowed [..., startForegroundCount:0]  → 允许录音
+        //   Background started FGS: Allowed [..., startForegroundCount:1]  → 扣掉麦克风
+        //   Foreground service started from background can not have ... microphone access
+        // 即 callers 第 2 次起必然 onError 9（缺少 RECORD_AUDIO）。
+        //
+        // 现在：onCreate 时进前台（此时系统刚 bind 本服务，仍受 SYSTEM_ALLOW_LISTED 保护），
+        // 之后识别结束只把通知改回「待命」，绝不 stopForeground —— 进程持续持有麦克风权利，
+        // 手环那边点几次都能立刻录。
+        enterForegroundOnce(notificationFor(
+            getString(R.string.notif_idle_title),
+            getString(R.string.notif_idle_text),
+        ))
+    }
+
+    /** 只在 onCreate 调一次；重复 startForeground 会累加 startForegroundCount 反而触发拒绝 */
+    private fun enterForegroundOnce(n: Notification) {
+        val ok = runCatching {
+            if (Build.VERSION.SDK_INT >= 29) {
+                startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIF_ID, n)
+            }
+        }
+        if (ok.isSuccess) {
+            Log.i(TAG, "entered foreground (persistent, type=microphone)")
+        } else {
+            Log.w(TAG, "startForeground failed: ${ok.exceptionOrNull()?.message}")
+            Notifications.notifyListening(this, n)
+        }
     }
 
     override fun onStartListening(recognizerIntent: Intent, listener: Callback) {
@@ -105,7 +141,12 @@ class AsrRecognitionService : RecognitionService() {
     override fun onDestroy() {
         synchronized(lock) { session?.cancel(); session = null }
         EngineHolder.clear()
-        stopListeningNotification()
+        // 服务真正销毁时才退出前台并撤通知（识别结束不退出，见 stopListeningNotification）
+        runCatching {
+            if (Build.VERSION.SDK_INT >= 24) stopForeground(Service.STOP_FOREGROUND_REMOVE)
+            else @Suppress("DEPRECATION") stopForeground(true)
+        }
+        Notifications.cancelListening(this)
         super.onDestroy()
         Log.i(TAG, "service destroyed")
     }
@@ -164,36 +205,47 @@ class AsrRecognitionService : RecognitionService() {
         }
     }
 
-    /**
-     * 识别期间显示状态通知。
-     * 优先前台服务；本应用刻意不申请 FOREGROUND_SERVICE（保持只有 RECORD_AUDIO + INTERNET），
-     * 在没有该权限的设备上自动退化为普通通知。
-     */
-    private fun startListeningNotification(model: AsrModel) {
+    /** 构造常驻前台通知（点击回到主界面） */
+    private fun notificationFor(title: String, text: String): Notification {
         val tap = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val n: Notification = Notification.Builder(this, CHANNEL)
+        return Notification.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setContentTitle(getString(R.string.notif_listening_title))
-            .setContentText(getString(R.string.notif_listening_text, model.name))
+            .setContentTitle(title)
+            .setContentText(text)
             .setContentIntent(tap)
             .setOngoing(true)
             .build()
-        val foregroundOk = runCatching { startForeground(NOTIF_ID, n) }.isSuccess
-        if (!foregroundOk) {
-            Notifications.notifyListening(this, n)
-        }
     }
 
+    /**
+     * 识别期间把**已存在的前台通知**改成「正在识别」。
+     *
+     * v0.5.3 起这里**不再调用 startForeground** —— 前台身份由 onCreate 一次性建立并常驻，
+     * 这里只用 notify() 更新文案。重复 startForeground 会累加 startForegroundCount，
+     * 从第 2 次起系统就扣掉麦克风权利（见 onCreate 注释里的日志链）。
+     */
+    private fun startListeningNotification(model: AsrModel) {
+        val n = notificationFor(
+            getString(R.string.notif_listening_title),
+            getString(R.string.notif_listening_text, model.name),
+        )
+        Notifications.notifyListening(this, n)
+    }
+
+    /**
+     * 识别结束：**只把通知改回待命，不退出前台**。
+     * 一退出前台，下一轮就要重新走「后台启动前台服务」判定并被扣麦克风权利。
+     */
     private fun stopListeningNotification() {
-        runCatching {
-            if (Build.VERSION.SDK_INT >= 24) stopForeground(Service.STOP_FOREGROUND_REMOVE)
-            else @Suppress("DEPRECATION") stopForeground(true)
-        }
-        Notifications.cancelListening(this)
+        val n = notificationFor(
+            getString(R.string.notif_idle_title),
+            getString(R.string.notif_idle_text),
+        )
+        Notifications.notifyListening(this, n)
     }
 
     companion object {

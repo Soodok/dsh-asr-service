@@ -8,6 +8,9 @@
     <string name="channel_model">模型提醒</string>
     <string name="notif_listening_title">正在离线识别</string>
     <string name="notif_listening_text">引擎：%1$s（音频不出本机）</string>
+    <!-- 待命态（v0.5.3）：服务常驻前台保住麦克风权利，未在识别时显示 -->
+    <string name="notif_idle_title">语音识别已就绪</string>
+    <string name="notif_idle_text">麦克风待命，随时可被语音调用</string>
     <string name="notif_nomodel_title">离线识别模型未就绪</string>
     <string name="notif_nomodel_text">点击进入模型管理，下载任一模型即可使用</string>
 
@@ -96,4 +99,16 @@
     <string name="settings_models_used">已占用空间：%1$s</string>
     <string name="settings_source_line">下载源：%1$s</string>
     <string name="btn_open_models">去下载模型</string>
+    <string name="guide_title">三步开始用</string>
+    <string name="guide_dismiss">不再显示</string>
+    <string name="guide_done">已完成</string>
+    <string name="guide_step1_title">下载一个模型</string>
+    <string name="guide_step1_body">推荐「流式中英双语」：边说边出字，中英混说都能认。</string>
+    <string name="guide_step1_action">去下载</string>
+    <string name="guide_step2_title">设为系统识别服务</string>
+    <string name="guide_step2_body">需要 Shizuku 或 root；没有的话去系统「语音输入」里选本应用。</string>
+    <string name="guide_step2_action">去设置</string>
+    <string name="guide_step3_title">跑一次自检</string>
+    <string name="guide_step3_body">验证服务注册、模型加载与整条识别链路是否正常。</string>
+    <string name="guide_step3_action">开始</string>
 </resources>

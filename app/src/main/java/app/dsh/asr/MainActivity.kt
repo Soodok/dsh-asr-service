@@ -15,6 +15,8 @@ import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import android.view.View
+import android.widget.LinearLayout
 import android.widget.TextView
 import java.io.File
 
@@ -27,6 +29,18 @@ class MainActivity : Activity(), DownloadBus.Listener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // v0.8.0：外部 App（DSH Mobile 语音服务页）可以用 action 直接把用户送到
+        // 对应动作上，不用他们自己在两个 App 之间找按钮。
+        //   app.dsh.asr.SET_DEFAULT —— 走一次「设为系统识别」
+        //   app.dsh.asr.CHECK       —— 跑一次自检并显示结果
+        val action = intent?.action
+        if (action == "app.dsh.asr.SET_DEFAULT" || action == "app.dsh.asr.CHECK") {
+            window.decorView.post {
+                runCatching {
+                    if (action == "app.dsh.asr.SET_DEFAULT") setDefaultFlow() else runCheck()
+                }
+            }
+        }
         setContentView(R.layout.activity_main)
 
         tvServiceState = findViewById(R.id.tvServiceState)
@@ -63,6 +77,18 @@ class MainActivity : Activity(), DownloadBus.Listener {
     override fun onResume() {
         super.onResume()
         DownloadBus.register(this)
+        // 引导卡插在「状态卡」上方：同为 ScrollView 内容容器的子项
+        runCatching {
+            val stateTv = findViewById<TextView>(R.id.tvServiceState)
+            val statusCard = stateTv?.parent as? LinearLayout
+            val content = statusCard?.parent as? LinearLayout
+            if (content != null) {
+                guideHost = LinearLayout(this)
+                val idx = content.indexOfChild(statusCard)
+                content.addView(guideHost, idx)
+            }
+        }
+
         refreshStatus()
     }
 
@@ -72,6 +98,8 @@ class MainActivity : Activity(), DownloadBus.Listener {
     }
 
     // ------------------------------------------------------------------ 状态
+
+    private lateinit var guideHost: LinearLayout
 
     private fun refreshStatus() {
         val mine = ComponentName(this, AsrRecognitionService::class.java)
@@ -114,6 +142,25 @@ class MainActivity : Activity(), DownloadBus.Listener {
             append("语言偏好：${prefs.language} · 流式优先：${if (prefs.preferStreaming) "开" else "关"}")
         }
         tvModelState.setTextColor(Ui.statusColor(ready.isNotEmpty(), warn = ready.isEmpty()))
+
+        // v0.8.0：首页「三步开始用」引导卡。只在未就绪且用户没关掉时出现，
+        // 三个动作直接复用本页已有的按钮（下载 / 设为默认 / 自检），不新造流程。
+        if (::guideHost.isInitialized) {
+            guideHost.removeAllViews()
+            SetupGuideCard(this).build(
+                modelReady = ready.isNotEmpty(),
+                isDefault = if (current.isBlank()) null else isDefault,
+                onDownload = {
+                    startActivity(Intent(this, ModelsActivity::class.java))
+                },
+                onSetDefault = { findViewById<View>(R.id.rowSetDefault)?.performClick() },
+                onCheck = { findViewById<View>(R.id.rowRunCheck)?.performClick() },
+                onDismiss = {
+                    Prefs(this).guideDismissed = true
+                    guideHost.removeAllViews()
+                },
+            )?.let { guideHost.addView(it) }
+        }
     }
 
     private fun openVoiceInputSettings() {

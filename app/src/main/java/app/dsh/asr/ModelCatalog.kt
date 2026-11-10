@@ -78,17 +78,32 @@ object ModelCatalog {
 
     val MODELS: List<AsrModel> = listOf(
         AsrModel(
+            id = "zipformer-bilingual-zh-en-int8",
+            name = "流式 Zipformer 中英双语",
+            langs = "中 · 英",
+            note = "边说边出字（流式），中英混说",
+            repo = "csukuangfj/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20",
+            kind = ModelKind.STREAMING_TRANSDUCER,
+            recommended = true,
+            files = listOf(
+                ModelFile("encoder-epoch-99-avg-1.int8.onnx", 181_895_032L),
+                ModelFile("decoder-epoch-99-avg-1.onnx", 13_876_452L),
+                ModelFile("joiner-epoch-99-avg-1.int8.onnx", 3_228_404L),
+                ModelFile("tokens.txt", 56_317L),
+            ),
+        ),
+        AsrModel(
             id = "sensevoice-small-int8",
             name = "SenseVoice Small",
             langs = "中 · 英 · 日 · 韩 · 粤",
-            note = "官方推荐：识别质量最好，自动加标点，支持中英混说",
+            note = "识别质量最好，自动加标点，支持中英混说；非流式（说完才出结果）",
             repo = "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17",
             kind = ModelKind.SENSE_VOICE,
             files = listOf(
                 ModelFile("model.int8.onnx", 239_233_841L),
                 ModelFile("tokens.txt", 315_894L),
             ),
-            recommended = true,
+            recommended = false,
         ),
         AsrModel(
             id = "paraformer-zh-int8",
@@ -112,20 +127,6 @@ object ModelCatalog {
             files = listOf(
                 ModelFile("model.int8.onnx", 81_828_675L),
                 ModelFile("tokens.txt", 75_352L),
-            ),
-        ),
-        AsrModel(
-            id = "zipformer-bilingual-zh-en-int8",
-            name = "流式 Zipformer 中英双语",
-            langs = "中 · 英",
-            note = "边说边出字（流式），中英混说",
-            repo = "csukuangfj/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20",
-            kind = ModelKind.STREAMING_TRANSDUCER,
-            files = listOf(
-                ModelFile("encoder-epoch-99-avg-1.int8.onnx", 181_895_032L),
-                ModelFile("decoder-epoch-99-avg-1.onnx", 13_876_452L),
-                ModelFile("joiner-epoch-99-avg-1.int8.onnx", 3_228_404L),
-                ModelFile("tokens.txt", 56_317L),
             ),
         ),
         AsrModel(

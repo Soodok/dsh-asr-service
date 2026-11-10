@@ -7,6 +7,7 @@ plugins {
 val targetAbi = (project.findProperty("abi") as String?) ?: "arm64-v8a"
 
 android {
+    buildFeatures { aidl = true }
     namespace = "app.dsh.asr"
     compileSdk = 36
 
@@ -15,8 +16,8 @@ android {
         minSdk = 26
         // targetSdk 28 —— 与 dsh-android 保持一致（sideload 分发策略）
         targetSdk = 28
-        versionCode = 12
-        versionName = "0.5.2"
+        versionCode = 32
+        versionName = "0.8.0"
 
         ndk {
             abiFilters += listOf(targetAbi)

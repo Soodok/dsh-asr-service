@@ -1,0 +1,254 @@
+package app.dsh.asr
+
+import android.app.Notification
+import android.app.Service
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
+import android.util.Base64
+import android.util.Log
+import java.io.File
+import java.util.concurrent.Executors
+
+/**
+ * 外部音频文件识别服务 —— 供其他 App（如《资料库》伴侣端）喂入 WAV 并取回文本。
+ *
+ * ## 为什么是 Service 而不是 Activity
+ * 首发实现用的是 `DecodeActivity`，真机失败于 **Android 10+ 的后台启动限制**：
+ * ```
+ * Background activity launch blocked! ... callingUidProcState: RECEIVER;
+ * callingUidHasVisibleActivity: false ... BAL_BLOCK
+ * ```
+ * 调用方（手表触发识别的那一刻）必然处于后台，而 `startActivity` 从后台被系统拦死，
+ * 连 Activity 都进不去。`bindService` 不受 BAL 约束，因此改为绑定服务。
+ *
+ * ## 契约
+ * - action `app.dsh.asr.DECODE_FILE`
+ * - 入参：`wavBase64`（首选，跨 uid 无需共享文件）或 `wav`（同为 app.dsh.asr 可读的绝对路径）
+ * - 入参：`lang`（默认 `zh`）、`replyAction`、`replyPackage`
+ * - 出口：识别完成后 `sendBroadcast(replyAction)`，携带 `ok` / `text` / `err` / `ms`
+ *
+ * ## 为什么结果走广播
+ * `bindService` 能拿到 Binder，但为了一次性识别专门定义 AIDL 并不划算；
+ * 而跨进程广播已经够用（调用方注册动态接收器即可）。
+ *
+ * ## 为什么服务里还要 startForeground
+ * 识别 3 秒音频在本机约 0.5~2 秒，但低端机可能更久；OPPO 的 `hans` 冻结管理器
+ * 会在几秒内冻结后台进程。挂前台保住进程态，避免识别中途被杀。
+ * `app.dsh.asr` 在系统允许列表里（日志 `code:SYSTEM_ALLOW_LISTED`），从后台
+ * 启动前台服务是被放行的。
+ */
+class DecodeService : Service() {
+
+    private val pool = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "asr-decode").apply { isDaemon = true }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        dlog("服务创建")
+    }
+
+    /** 同时写 logcat 与 `files/decode.log`：真机 logcat 被系统刷屏，按 tag 过滤常捞不到。 */
+    private fun dlog(msg: String) {
+        Log.i(TAG, msg)
+        val ts = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())
+        runCatching { File(filesDir, "decode.log").appendText(ts + " " + msg + System.lineSeparator()) }
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        if (intent == null) return null
+        val action = intent.action ?: return null
+        if (action != ACTION_DECODE) return null
+
+        enterForeground()
+        // ★★★ v0.5.7 关键修复（2026-11-03 00:45 真机实锤）：
+        //   **业务处理不能放在 onBind 里。**
+        //   MicForegroundService 为了保活，已经用同一个 ComponentName 绑过一次；
+        //   Android 规定「同一客户端对同一服务再次 bindService 时不再调用 onBind」，
+        //   于是第二次及以后的请求参数（wavBase64）永远送不进来 ——
+        //   服务端 decode.log 一条记录都没有，客户端只能干等 12s 超时，
+        //   用户看到的就是「取消之后再点语音，说什么都回答没听见」。
+        //   现在 onBind 只负责建前景通知与返回句柄，真正的请求走 onStartCommand。
+        return Binder(this)
+    }
+
+    /**
+     * 真正处理识别请求（由 startService 触达）。
+     *
+     * 为什么用 startService 而不是 bindService 传参：见 onBind 顶部注释，
+     * 重复 bind 不会重新调 onBind，参数必然丢。startService 每次都会新建一次
+     * onStartCommand 调用，参数完整可达。
+     */
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent == null || intent.action != ACTION_DECODE) return START_NOT_STICKY
+        enterForeground()
+        handleDecode(intent)
+        return START_NOT_STICKY
+    }
+
+    /** 识别主流程（原 onBind 的业务体，抽出以便两条路径复用） */
+    private fun handleDecode(intent: Intent) {
+
+        val replyAction = intent.getStringExtra("replyAction")
+        val replyPackage = intent.getStringExtra("replyPackage")
+        // ★ Messenger 回传（首选）：跨进程广播在国产 ROM 上会被冻结管理器挂起/延迟，
+        //   实测识别 144ms 就完成、广播却始终收不到（调用方 12s 超时）。
+        //   Messenger 是纯 Binder 调用，不经过广播队列，最可靠。
+        val replyMessenger = runCatching {
+            if (Build.VERSION.SDK_INT >= 33)
+                intent.getParcelableExtra("replyMessenger", android.os.Messenger::class.java)
+            else @Suppress("DEPRECATION") intent.getParcelableExtra("replyMessenger") as? android.os.Messenger
+        }.getOrNull()
+        val lang = intent.getStringExtra("lang")?.ifBlank { null } ?: "zh"
+
+        // 源：优先 base64（跨 uid 可用），其次路径
+        val src: File? = run {
+            val b64 = intent.getStringExtra("wavBase64")
+            if (!b64.isNullOrBlank()) {
+                runCatching {
+                    val bytes = Base64.decode(b64, Base64.DEFAULT)
+                    if (bytes.size <= 44) return@run null
+                    val f = File(cacheDir, "decode_in_${System.currentTimeMillis()}.wav")
+                    f.writeBytes(bytes)
+                    f
+                }.getOrElse {
+                    finishWith(replyAction, replyPackage, replyMessenger, false, "", "写入缓存失败：${it.message}", 0)
+                    return@run null
+                }
+            } else {
+                val p = intent.getStringExtra("wav")
+                if (p.isNullOrBlank()) {
+                    finishWith(replyAction, replyPackage, replyMessenger, false, "", "缺少 wav 或 wavBase64 参数", 0)
+                    null
+                } else File(p)
+            }
+        }
+
+        if (src == null) {
+            stopSelfSafely()
+            return
+        }
+        if (!src.exists() || src.length() <= 44L) {
+            finishWith(
+                replyAction, replyPackage, replyMessenger, false, "",
+                "音频文件不存在或为空（${if (src.exists()) src.length() else -1} 字节）", 0
+            )
+            stopSelfSafely()
+            return
+        }
+
+        pool.execute {
+            val t0 = System.currentTimeMillis()
+            var ok = false
+            var text = ""
+            var err: String? = null
+            try {
+                val model = ModelPicker.pick(Prefs(this), ModelStore(this), lang)
+                if (model == null) {
+                    err = "没有可用的识别模型，请先在 app.dsh.asr 里下载模型"
+                } else {
+                    dlog("开始识别：model=${model.id} wav=${src.name} size=${src.length()}B lang=$lang")
+                    val r = EngineSelfTest.decodeWav(this, model, src, lang)
+                    ok = r.ok
+                    text = r.text
+                    err = r.error
+                }
+            } catch (t: Throwable) {
+                err = "识别异常：${t.message}"
+                Log.e(TAG, "识别异常", t)
+            }
+            val ms = System.currentTimeMillis() - t0
+            if (ms < 0) Log.w(TAG, "时间戳异常")
+            dlog("完成：ok=$ok ${ms}ms text=${text.length} 字[$text]${err?.let { " err=$it" } ?: ""}")
+            finishWith(replyAction, replyPackage, replyMessenger, ok, text, err, ms)
+            runCatching { src.delete() }
+            stopSelfSafely()
+        }
+    }
+
+    /** 只用作「已绑定」的句柄，调用方不需要通过它通信（结果走广播）。 */
+    class Binder(private val svc: DecodeService) : android.os.Binder() {
+        fun service(): DecodeService = svc
+    }
+
+    private fun enterForeground() {
+        runCatching {
+            val n = Notification.Builder(this, AsrRecognitionService.CHANNEL)
+                .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+                .setContentTitle(getString(R.string.notif_listening_title))
+                .setContentText("正在识别手表音频")
+                .setOngoing(true)
+                .build()
+            // ★ 类型必须是 dataSync 不能是 microphone：本服务只解码已有音频文件，
+            //   完全不碰麦克风。用 microphone 会被系统按 while-in-use 规则拒绝：
+            //   真机日志 `Foreground service started from background can not have
+            //   location/camera/microphone access: service app.dsh.asr/.DecodeService`。
+            if (Build.VERSION.SDK_INT >= 29) {
+                startForeground(
+                    AsrRecognitionService.NOTIF_ID, n,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } else {
+                startForeground(AsrRecognitionService.NOTIF_ID, n)
+            }
+        }.onFailure { Log.w(TAG, "进前台失败：${it.message}") }
+    }
+
+    private fun stopSelfSafely() {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE)
+            else @Suppress("DEPRECATION") stopForeground(true)
+        }
+        runCatching { Notifications.cancelListening(this) }
+        stopSelf()
+    }
+
+    private fun finishWith(
+        replyAction: String?, replyPackage: String?, replyMessenger: android.os.Messenger?,
+        ok: Boolean, text: String, err: String?, ms: Long
+    ) {
+        // 优先 Messenger（Binder 直达），广播只作兜底
+        if (replyMessenger != null) {
+            val sent = runCatching {
+                val data = android.os.Bundle().apply {
+                    putBoolean("ok", ok)
+                    putString("text", text)
+                    putString("err", err)
+                    putLong("ms", ms)
+                }
+                replyMessenger.send(android.os.Message.obtain(null, MSG_RESULT).apply { this.data = data })
+            }
+            if (sent.isSuccess) {
+                dlog("结果已回传（Messenger）ok=$ok")
+                return
+            }
+            dlog("Messenger 回传失败：${sent.exceptionOrNull()?.message}")
+        }
+        if (replyAction.isNullOrBlank()) return
+        runCatching {
+            val i = Intent(replyAction).apply {
+                replyPackage?.let { setPackage(it) }
+                putExtra("ok", ok)
+                putExtra("text", text)
+                putExtra("err", err)
+                putExtra("ms", ms)
+            }
+            sendBroadcast(i)
+            dlog("结果已回传（广播兜底）ok=$ok")
+        }.onFailure { Log.w(TAG, "回传广播失败：${it.message}") }
+    }
+
+    override fun onDestroy() {
+        runCatching { pool.shutdownNow() }
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val TAG = "AsrDecode"
+        const val ACTION_DECODE = "app.dsh.asr.DECODE_FILE"
+        /** 回传结果的消息 what 值 */
+        const val MSG_RESULT = 1
+    }
+}

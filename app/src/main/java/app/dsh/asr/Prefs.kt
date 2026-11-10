@@ -27,6 +27,11 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_SILENCE, 1200)
         set(value) = sp.edit().putInt(K_SILENCE, value).apply()
 
+    /** 首页「三步开始用」引导卡是否被用户手动关掉。全就绪后也会自动隐藏。 */
+    var guideDismissed: Boolean
+        get() = sp.getBoolean("guide_dismissed", false)
+        set(value) = sp.edit().putBoolean("guide_dismissed", value).apply()
+
     /** 单次会话最长时长 */
     var maxUtteranceMs: Int
         get() = sp.getInt(K_MAX_UTTER, 30_000)

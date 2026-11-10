@@ -47,6 +47,40 @@
                 <action android:name="app.dsh.asr.OPEN" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- v0.8.0：让调用方（DSH Mobile 语音服务页）能一键把本 App 设为系统
+                 识别服务 / 触发自检，不必让用户自己在这两个 App 之间来回找。 -->
+            <intent-filter>
+                <action android:name="app.dsh.asr.SET_DEFAULT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="app.dsh.asr.CHECK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- 文件识别入口：外部 App 传一段 WAV 进来，拿回文本。
+             手表录音链路（S5 → PCM → 手机识别）必须走这里，因为系统
+             RecognitionService 只能吃本机麦克风，无法喂入外部音频。 -->
+        <activity
+            android:name=".DecodeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="app.dsh.asr.DECODE_FILE" />
+                <action android:name="app.dsh.asr.PREWARM" />
+                <!-- ★ v0.6.0 流式识别三个动作。必须在这里声明：
+                     代码里用显式 ComponentName 起服务时不需要 intent-filter，
+                     但 `am start-foreground-service -n ... -a ...` 这类命令行投递，
+                     以及部分 ROM 的组件解析，会因 action 未声明而报
+                     `Error: Not found; no service started.` -->
+                <action android:name="app.dsh.asr.STREAM_START" />
+                <action android:name="app.dsh.asr.STREAM_CHUNK" />
+                <action android:name="app.dsh.asr.STREAM_END" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -61,6 +95,33 @@
             android:label="@string/settings_title" />
 
         <!-- 系统识别服务。声明要点见文件顶部注释（对齐 Sayboard）。 -->
+        <!-- 外部音频文件识别服务：bindService 而不是 startActivity
+             —— Android 10+ 禁止后台应用启动别的 App 的 Activity（BAL_BLOCK），
+             而手表触发识别时调用方必在后台。 -->
+        <!-- v0.8.0：跨 App 状态查询。dsh 语音服务页靠它显示「已装 / 模型就绪 / 是否默认」，
+             而不是只能判断"装没装"。 -->
+        <provider
+            android:name=".StatusProvider"
+            android:authorities="app.dsh.asr.status"
+            android:exported="true"
+            android:readPermission="android.permission.INTERNET" />
+
+        <service
+            android:name=".DecodeService"
+            android:exported="true"
+            android:foregroundServiceType="dataSync">
+            <!-- ★★★ 流式三动作必须显式声明：不声明的 action 投递会直接
+                 `Error: Not found; no service started`，onStartCommand 永远收不到。
+                 整段识别（DECODE_FILE）走 bindService 传参，流式走 startService 传参。 -->
+            <intent-filter>
+                <action android:name="app.dsh.asr.DECODE_FILE" />
+                <action android:name="app.dsh.asr.STREAM_START" />
+                <action android:name="app.dsh.asr.STREAM_CHUNK" />
+                <action android:name="app.dsh.asr.STREAM_END" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".AsrRecognitionService"
             android:exported="true"
